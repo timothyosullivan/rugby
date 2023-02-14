@@ -1,4 +1,4 @@
-package com.example.springboot;
+package com.rugbystats.core;
 
 import java.util.Arrays;
 
