@@ -63,54 +63,99 @@ Resources:
     Properties:
       InstanceType: t2.micro
       KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref RootInstanceProfile
       ImageId: !Ref LatestAmiId
       Tags:
         - Key: Name
           Value: "RugbyStatsWebserver"
-      SecurityGroups:
+      SecurityGroups: 
         - !Ref WebSecurityGroup
- #     UserData:
- #       Fn::Base64: |
- #          #!/bin/bash
- #          yum -y install httpd php mysql php-mysql
-
- #          case $(ps -p 1 -o comm | tail -1) in
- #          systemd) systemctl enable --now httpd ;;
- #          init) chkconfig httpd on; service httpd start ;;
- #          *) echo "Error starting httpd (OS not using init or systemd)." 2>&1
- #          esac
-
- #          if [ ! -f /var/www/html/bootcamp-app.tar.gz ]; then
- #          cd /var/www/html
- #          wget https://s3.amazonaws.com/immersionday-labs/bootcamp-app.tar
- #          tar xvf bootcamp-app.tar
- #          chown apache:root /var/www/html/rds.conf.php
- #         fi
- #          yum -y update
-
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          aws s3 cp s3://rugby-code/rugby-app-1.0-SNAPSHOT.jar /home/ec2-user/rugby-app-deployment-1.0-SNAPSHOT.jar
+          sudo yum -y install java-17
+          cd /home/ec2-user/
+          sudo nohup java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > ec2dep.log
   IPAddress:
     Type: AWS::EC2::EIP
-  IPAssoc:
+  IPAssociation:
     Type: AWS::EC2::EIPAssociation
     Properties:
-      InstanceId: !Ref EC2Instance
-      EIP: !Ref IPAddress
+     InstanceId: !Ref EC2Instance
+     EIP: !Ref IPAddress
+
   WebSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
+    Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH and HTTP connections to EC2 instance
       Tags:
         - Key: Name
-          Value: "WebTier-sg"
+          Value: WebTier-SecurityGroup
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8080
+          ToPort: 8080
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
+
+  RootInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles: 
+        - !Ref RootRole
+
+  RootRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+          Version : '2012-10-17'
+          Statement:
+              Effect: Allow
+              Principal:
+                Service: ec2.amazonaws.com
+              Action: 
+                - 'sts:AssumeRole'
+
+  ReadS3BucketPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ReadS3BucketPolicy
+      PolicyDocument:
+        Statement:
+            Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource: "arn:aws:s3:::rugby-code/*"
+      Roles: 
+        - !Ref RootRole
+
+# RootRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      AssumeRolePolicyDocument:
+#         Version : '2012-10-17'
+#          Statement:
+#            Effect: Allow
+#            Principal:
+#              Service: ec2.amazonaws.com
+#            Action: 'sts:AssumeRole'
+#            Path: /
+#          Policies:
+#            PolicyName: root
+#            PolicyDocument:
+#              Version : '2012-10-17'
+#              Statement:
+#                Effect: Allow
+#                Action:
+#                  s3:Get*
+#                  s3:List*
+#                Resource: 'arn:aws:s3:::rugby-code/*'
 
 #  DBSecurityGroup:
 #    Type: AWS::EC2::SecurityGroup

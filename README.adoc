@@ -1,1 +1,3 @@
-Software development project focused on learning insights. The project uses the sport of rugby as a focal point for product development. More can be learned about this project by navigating to the accompanying blog series: https://timosullivan.org/
+Software development project focused on learning insights. The project uses the sport of rugby as a focal point for product development. 
+
+More can be learned about this project by navigating to the accompanying blog series: https://timosullivan.org/
