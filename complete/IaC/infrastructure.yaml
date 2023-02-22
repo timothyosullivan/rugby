@@ -22,6 +22,12 @@ Parameters:
   LatestAmiId:
     Type : AWS::SSM::Parameter::Value<String>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-ebs
+  S3BucketName:
+    Type: String
+    Description: The name of the S3 bucket holding the rugby web app deployment - must be unique across all of AWS (3-63 lowercase letters or numbers)
+    Default: bucket-storing-deployment-jar
+    AllowedPattern: '^[a-z0-9-]{5,40}$'
+    ConstraintDescription: 3-63 characters; must contain only lowercase letters or numbers
 #  DBInstanceID:
 #    Default: rdsdb
 #    Description: RDS DB instance
@@ -71,12 +77,13 @@ Resources:
       SecurityGroups: 
         - !Ref WebSecurityGroup
       UserData:
-        Fn::Base64: |
-          #!/bin/bash
-          aws s3 cp s3://rugby-code/rugby-app-1.0-SNAPSHOT.jar /home/ec2-user/rugby-app-deployment-1.0-SNAPSHOT.jar
-          sudo yum -y install java-17
-          cd /home/ec2-user/
-          sudo nohup java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            aws s3 cp s3://${S3BucketName}/rugby-app-1.0-SNAPSHOT.jar /home/ec2-user/rugby-app-deployment-1.0-SNAPSHOT.jar
+            sudo yum -y install java-17
+            cd /home/ec2-user/
+            sudo nohup java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
   IPAddress:
     Type: AWS::EC2::EIP
   IPAssociation:
