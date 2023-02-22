@@ -76,7 +76,7 @@ Resources:
           aws s3 cp s3://rugby-code/rugby-app-1.0-SNAPSHOT.jar /home/ec2-user/rugby-app-deployment-1.0-SNAPSHOT.jar
           sudo yum -y install java-17
           cd /home/ec2-user/
-          sudo nohup java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > ec2dep.log
+          sudo nohup java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
   IPAddress:
     Type: AWS::EC2::EIP
   IPAssociation:
