@@ -3,10 +3,10 @@ Metadata:
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'This AWS CloudFormation Template will launch an Amazon EC2 instance of type t2.micro with latest Amazon Linux 2 OS, and
 install the RugbyStats webserver. 
-The template will also create an Amazon RDS MySQL database instance in free tier, i.e. of type db.t2.micro and with no Multi-AZ setup or
+The template will also create an Amazon RDS PostgreSQL database instance in free tier, i.e. of type db.t2.micro and with no Multi-AZ setup or
 read replicas. 
-The WebTier Security Group will allow only SSH and HTTP connections to this web server EC2 instance, and the DBTier Security Group will
-only allow the WebTier Security Group to initiate database connections to the RDS DB instance over TCP port 3306. The default VPC will be used.'
+The WebAppSecurityGroup will allow only SSH and HTTP connections to this web server EC2 instance, and the DBEC2SecurityGroup will
+only allow the WebAppSecurityGroup to initiate database connections to the RDS PostgreSQL DB instance over TCP port 5432. The default VPC will be used.'
 
 Parameters:
   KeyName:
@@ -28,16 +28,32 @@ Parameters:
     Default: bucket-storing-deployment-jar
     AllowedPattern: '^[a-z0-9-]{5,40}$'
     ConstraintDescription: 3-63 characters; must contain only lowercase letters or numbers
-#  DBInstanceID:
-#    Default: rdsdb
-#    Description: RDS DB instance
-#    Type: String
-#    MinLength: '1'
-#    MaxLength: '63'
-#    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-#    ConstraintDescription: >-
-#      Must begin with a letter and must not end with a hyphen or contain two
-#      consecutive hyphens.
+  DBInstanceIdentifier:
+    Type: String
+    Default: "rugby-app-db"
+    Description: RDS DB instance
+    Type: String
+    MinLength: '1'
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9-]*'
+    ConstraintDescription: Must begin with a letter and must not end with a hyphen or contain two consecutive hyphens.
+  DBUsername:
+    NoEcho: "true"
+    Description: Username for Postgresql database access
+    Type: String
+    MinLength: "1"
+    MaxLength: "16"
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+    Default: "postgres"
+  DBPassword:
+    NoEcho: "true"
+    Description: Password Postgresql database access
+    Type: String
+    MinLength: "8"
+    MaxLength: "41"
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Must contain only alphanumeric characters and be a minimum of 8 characters.
 #  DatabaseName:
 #    Default: mydb
 #    Description: Database name
@@ -46,22 +62,6 @@ Parameters:
 #    MaxLength: '64'
 #    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
 #    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
-#  MasterUsername:
-#    NoEcho: 'true'
-#    Description: Username for MySQL database access
-#    Type: String
-#    MinLength: '1'
-#    MaxLength: '16'
-#    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-#    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
-#  MasterPassword:
-#    NoEcho: 'true'
-#    Description: Password for MySQL database access
-#    Type: String
-#    MinLength: '8'
-#    MaxLength: '41'
-#    AllowedPattern: '[a-zA-Z0-9]*'
-#    ConstraintDescription: Must contain only alphanumeric characters.
 
 Resources:
   EC2Instance:
@@ -75,7 +75,7 @@ Resources:
         - Key: Name
           Value: "RugbyStatsWebserver"
       SecurityGroups: 
-        - !Ref WebSecurityGroup
+        - !Ref WebAppSecurityGroup
       UserData:
         Fn::Base64:
           !Sub |
@@ -83,26 +83,31 @@ Resources:
             aws s3 cp s3://${S3BucketName}/rugby-app-1.0-SNAPSHOT.jar /home/ec2-user/rugby-app-deployment-1.0-SNAPSHOT.jar
             sudo yum -y install java-17
             cd /home/ec2-user/
-            sudo nohup java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
-  IPAddress:
+            sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 8080
+            java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
+  WebAppElasticIP:
     Type: AWS::EC2::EIP
   IPAssociation:
     Type: AWS::EC2::EIPAssociation
     Properties:
      InstanceId: !Ref EC2Instance
-     EIP: !Ref IPAddress
+     EIP: !Ref WebAppElasticIP
 
-  WebSecurityGroup:
+  WebAppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow SSH and HTTP connections to EC2 instance
       Tags:
         - Key: Name
-          Value: WebTier-SecurityGroup
+          Value: WebAppSecurityGroup
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
@@ -142,71 +147,45 @@ Resources:
       Roles: 
         - !Ref RootRole
 
-# RootRole:
-#    Type: AWS::IAM::Role
-#    Properties:
-#      AssumeRolePolicyDocument:
-#         Version : '2012-10-17'
-#          Statement:
-#            Effect: Allow
-#            Principal:
-#              Service: ec2.amazonaws.com
-#            Action: 'sts:AssumeRole'
-#            Path: /
-#          Policies:
-#            PolicyName: root
-#            PolicyDocument:
-#              Version : '2012-10-17'
-#              Statement:
-#                Effect: Allow
-#                Action:
-#                  s3:Get*
-#                  s3:List*
-#                Resource: 'arn:aws:s3:::rugby-code/*'
+  WebAppDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      VPCSecurityGroups:
+        - !GetAtt DBEC2SecurityGroup.GroupId
+      AllocatedStorage: "5"
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      Tags:
+        - Key: Name
+          Value: rugby-webapp-rds
+#     DeletionPolicy: Snapshot
+#     UpdateReplacePolicy: Snapshot
 
-#  DBSecurityGroup:
-#    Type: AWS::EC2::SecurityGroup
-#    Properties:
-#      GroupDescription: Allow connections only from Webserver
-#      Tags:
-#        - Key: Name
-#          Value: "DBTier-sg"
-#      SecurityGroupIngress:
-#      - IpProtocol: tcp
-#        FromPort: 3306
-#        ToPort: 3306
-#        SourceSecurityGroupId: !GetAtt WebSecurityGroup.GroupId
+  DBEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: rugby-webapp-db-security-group
+      GroupDescription: Allow postgres inbound traffic
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupName:
+            Ref: WebAppSecurityGroup
+      Tags:
+        - Key: Name
+          Value: rugby-webapp-db-security-group
 
-#  MyDB:
-#    Type: 'AWS::RDS::DBInstance'
-#    Properties:
-#      DBInstanceIdentifier: !Ref DBInstanceID
-#      DBName: !Ref DatabaseName
-#      DBInstanceClass: db.t2.micro
-#      AllocatedStorage: 20
-#      Engine: MySQL
-#      EngineVersion: 5.7.28
-#      MasterUsername: !Ref MasterUsername
-#      MasterUserPassword: !Ref MasterPassword
-#      DBParameterGroupName: !Ref RDSParameterGroup
-#      VPCSecurityGroups:
-#        - Fn::GetAtt: [ DBSecurityGroup, GroupId ]
-
-#  RDSParameterGroup:
-#    Properties:
-#      Description: "custom parameter group"
-#      Family: mysql5.7
-#      Parameters:
-#        character_set_database: utf32
-#      Tags:
-#        - Key: Name
-#          Value: "tut"
-#    Type: "AWS::RDS::DBParameterGroup"
-
-#Outputs:
-#  WebsiteURL:
-#    Value: !Sub 'http://${EC2Instance.PublicDnsName}/'
-#    Description: Webserver URL
-#  RDSEndpoint:
-#    Value: !GetAtt MyDB.Endpoint.Address
-#    Description: RDS DB instance endpoint
+Outputs:
+  WebsiteURL:
+      Value: !Sub http://${WebAppElasticIP}
+      Description: Webserver URL
+  WebServerPublicDNS:
+    Description: "Public DNS of EC2 instance"
+    Value: !GetAtt EC2Instance.PublicDnsName
+  WebAppDatabaseEndpoint:
+    Description: "Connection endpoint for the database"
+    Value: !GetAtt WebAppDatabase.Endpoint.Address
