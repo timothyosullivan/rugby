@@ -138,7 +138,7 @@ Resources:
             Action:
               - s3:Get*
               - s3:List*
-            Resource: "arn:aws:s3:::rugby-code/*"
+            Resource: !Sub "arn:aws:s3:::${S3BucketName}/*"
       Roles: 
         - !Ref RootRole
 
