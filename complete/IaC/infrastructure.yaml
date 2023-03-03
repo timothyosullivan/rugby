@@ -30,14 +30,14 @@ Parameters:
     ConstraintDescription: 3-63 characters; must contain only lowercase letters or numbers
   DBInstanceIdentifier:
     Type: String
-    Default: "rugby-app-db"
+    Default: rugby-app-db-instance
     Description: RDS DB instance
     Type: String
     MinLength: '1'
     MaxLength: '63'
     AllowedPattern: '[a-zA-Z][a-zA-Z0-9-]*'
     ConstraintDescription: Must begin with a letter and must not end with a hyphen or contain two consecutive hyphens.
-  DBUsername:
+  DBUserName:
     NoEcho: "true"
     Description: Username for Postgresql database access
     Type: String
@@ -54,14 +54,6 @@ Parameters:
     MaxLength: "41"
     AllowedPattern: "[a-zA-Z0-9]*"
     ConstraintDescription: Must contain only alphanumeric characters and be a minimum of 8 characters.
-#  DatabaseName:
-#    Default: mydb
-#    Description: Database name
-#    Type: String
-#    MinLength: '1'
-#    MaxLength: '64'
-#    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
-#    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
 
 Resources:
   EC2Instance:
@@ -84,7 +76,18 @@ Resources:
             sudo yum -y install java-17
             cd /home/ec2-user/
             sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 8080
-            java -jar rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
+
+            # export RDS DB connection details on instance startup
+            cat > /etc/profile.d/load_env.sh << 'EOF'
+            export CLOUD_DATABASE_ENDPOINT=${WebAppDatabase.Endpoint.Address}
+            export CLOUD_DATABASE_USERNAME=${DBUserName}
+            export CLOUD_DATABASE_PASSWORD=${DBPassword}
+            EOF
+
+            chmod +x /etc/profile.d/load_env.sh
+            source /etc/profile
+
+ #           java -jar -Dspring.config.additional-location=classpath:/application-cloud.properties -Dspring.profiles.active=cloud rugby-app-deployment-1.0-SNAPSHOT.jar > rugby-app-deployment.log
   WebAppElasticIP:
     Type: AWS::EC2::EIP
   IPAssociation:
@@ -156,11 +159,12 @@ Resources:
       AllocatedStorage: "5"
       DBInstanceClass: db.t3.micro
       Engine: postgres
-      MasterUsername: !Ref DBUsername
+      MasterUsername: !Ref DBUserName
       MasterUserPassword: !Ref DBPassword
+      DBName: rugby_app_db
       Tags:
         - Key: Name
-          Value: rugby-webapp-rds
+          Value: rugby_app_db
 #     DeletionPolicy: Snapshot
 #     UpdateReplacePolicy: Snapshot
 
