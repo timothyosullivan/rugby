@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.6.4</version>
+		<version>3.1.0-SNAPSHOT</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
@@ -27,6 +27,32 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+      		<artifactId>spring-boot-starter-data-jpa</artifactId>
+    	</dependency>
+    
+		<dependency>
+      		<groupId>org.springframework.boot</groupId>
+      		<artifactId>spring-boot-starter-data-rest</artifactId>
+    	</dependency>
+    
+		<dependency>
+      		<groupId>org.springframework.boot</groupId>
+      		<artifactId>spring-boot-starter-thymeleaf</artifactId>
+    	</dependency>
+
+    	<dependency>
+      		<groupId>org.springframework.boot</groupId>
+      		<artifactId>spring-boot-starter-test</artifactId>
+      		<scope>test</scope>
+		</dependency>
+
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+        </dependency>
+
 		<!-- tag::actuator[] -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -38,7 +64,7 @@
 		<dependency>
     		<groupId>org.postgresql</groupId>
     		<artifactId>postgresql</artifactId>
-    		<version>42.5.0</version>
+    		<version>42.5.4</version>
 		</dependency>
 
 		<dependency>
@@ -60,7 +86,13 @@
 			<scope>test</scope>
 		</dependency>
 		<!-- end::tests[] -->
-	</dependencies>
+
+		<dependency>
+        	<groupId>junit</groupId>
+        	<artifactId>junit</artifactId>
+        	<scope>test</scope>
+    	</dependency> 
+	 </dependencies>
 
 	<build>
 		<plugins>
@@ -71,5 +103,40 @@
 		</plugins>
   		<finalName>rugby-app-1.0-SNAPSHOT</finalName>
 	</build>
-
+	<repositories>
+		<repository>
+      		<id>spring-milestones</id>
+      		<name>Spring Milestones</name>
+      		<url>https://repo.spring.io/milestone</url>
+      		<snapshots>
+        		<enabled>false</enabled>
+      		</snapshots>
+    	</repository>
+    	<repository>
+      		<id>spring-snapshots</id>
+      		<name>Spring Snapshots</name>
+      		<url>https://repo.spring.io/snapshot</url>
+      		<releases>
+        		<enabled>false</enabled>
+      		</releases>
+    	</repository>
+  	</repositories>
+  	<pluginRepositories>
+    	<pluginRepository>
+      		<id>spring-milestones</id>
+      		<name>Spring Milestones</name>
+      		<url>https://repo.spring.io/milestone</url>
+      		<snapshots>
+        		<enabled>false</enabled>
+      		</snapshots>
+    	</pluginRepository>
+    	<pluginRepository>
+      		<id>spring-snapshots</id>
+      		<name>Spring Snapshots</name>
+      		<url>https://repo.spring.io/snapshot</url>
+      		<releases>
+        		<enabled>false</enabled>
+      		</releases>
+    	</pluginRepository>
+  	</pluginRepositories>
 </project>

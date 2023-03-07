@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html  lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Rugby Results</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <h2>International Rugby Match Results</h2>
+
+    <table>
+        <caption> International Rugby Match Results</caption>
+        <tr>
+            <th>Id</th>
+            <th>Date</th>
+            <th>Home Team</th>
+            <th>Away Team</th>
+            <th>Home Score</th>
+            <th>Away Score</th>
+            <th>Competition</th>
+            <th>Stadium</th>
+            <th>City</th>
+            <th>Country</th>
+            <th>Neutral</th>
+            <th>World Cup</th>
+        </tr>
+
+        <tr th:each="match : ${matches}">
+            <td th:text="${match.id}">Id</td>
+            <td th:text="${match.date}">Date</td>
+            <td th:text="${match.homeTeam}">Home Team</td>
+            <td th:text="${match.awayTeam}">Away Team</td>
+            <td th:text="${match.homeScore}">Home Score</td>
+            <td th:text="${match.awayScore}">Away Score</td>
+            <td th:text="${match.competition}">Competition/td>
+            <td th:text="${match.stadium}">Stadium</td>
+            <td th:text="${match.city}">City</td>
+            <td th:text="${match.country}">Country</td>
+            <td th:text="${match.neutral}">Neutral/td>
+            <td th:text="${match.worldCup}">World Cup</td>
+        </tr>
+    </table>
+
+</body>
+
+</html>
